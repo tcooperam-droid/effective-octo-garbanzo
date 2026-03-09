@@ -130,9 +130,7 @@ function parseVCF(text: string): Omit<Client, "id" | "createdAt">[] {
   cards.forEach(card => {
     const lines: string[] = [];
 
-    // Une linhas dobradas (RFC 2425: linha que começa com espaço/tab é continuação)
-    card.split(/
-?
+ card.split(/\r?\n|\r/)
 /).forEach(line => {
       if (/^[ 	]/.test(line) && lines.length > 0) {
         lines[lines.length - 1] += line.trimStart();
