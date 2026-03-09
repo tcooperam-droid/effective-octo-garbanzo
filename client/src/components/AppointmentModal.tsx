@@ -217,10 +217,10 @@ export default function AppointmentModal({
     setClientSearch("");
   };
 
-  const handleCreateNewClient = () => {
+  const handleCreateNewClient = async () => {
     if (!clientName.trim()) { toast.error("Nome do cliente é obrigatório"); return; }
     try {
-      const newClient = clientsStore.create({
+      const newClient = await clientsStore.create({
         name: clientName.trim(),
         email: newClientEmail.trim() || null,
         phone: newClientPhone.trim() || null,
@@ -237,7 +237,7 @@ export default function AppointmentModal({
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!clientName.trim())            { toast.error("Nome do cliente é obrigatório"); return; }
     if (!employeeId)                   { toast.error("Selecione um funcionário"); return; }
     if (selectedServices.length === 0) { toast.error("Adicione pelo menos um serviço"); return; }
@@ -247,7 +247,7 @@ export default function AppointmentModal({
       if (isEditing && appointment) {
         // Edição: atualiza o agendamento existente normalmente
         const resolvedGroupId = appointment?.groupId ?? undefined;
-        appointmentsStore.update(appointment.id, buildPayload(resolvedGroupId));
+        await appointmentsStore.update(appointment.id, buildPayload(resolvedGroupId));
         toast.success("Agendamento atualizado!");
         onSuccess();
         return;
@@ -263,15 +263,15 @@ export default function AppointmentModal({
 
       if (selectedServices.length <= 1) {
         // Caso normal: 1 serviço, 1 agendamento
-        appointmentsStore.create(buildPayload(gid));
+        await appointmentsStore.create(buildPayload(gid));
         toast.success("Agendamento criado!");
       } else {
         // Múltiplos serviços: cria N agendamentos encadeados em sequência
         let cursor = new Date(base.getFullYear(), base.getMonth(), base.getDate(), sh, sm);
-        selectedServices.forEach((svc, idx) => {
+        for (const [idx, svc] of selectedServices.entries()) {
           const svcStart = new Date(cursor);
           const svcEnd   = addMinutes(svcStart, svc.durationMinutes || 60);
-          appointmentsStore.create({
+          await appointmentsStore.create({
             clientName:    clientName.trim(),
             clientId:      clientId,
             employeeId:    empId,
@@ -285,7 +285,7 @@ export default function AppointmentModal({
             services:      [svc],
           });
           cursor = svcEnd;
-        });
+        }
         toast.success(`${selectedServices.length} serviços agendados em blocos separados!`);
       }
       onSuccess();
@@ -296,10 +296,10 @@ export default function AppointmentModal({
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!appointment || !confirm("Excluir este agendamento?")) return;
     try {
-      appointmentsStore.delete(appointment.id);
+      await appointmentsStore.delete(appointment.id);
       toast.success("Agendamento excluído");
       onSuccess();
     } catch {
@@ -308,7 +308,7 @@ export default function AppointmentModal({
   };
 
   // Save current appointment and open a new modal for next service in the group
-  const handleAddGroupService = () => {
+  const handleAddGroupService = async () => {
     if (!clientName.trim())            { toast.error("Preencha o nome do cliente"); return; }
     if (!employeeId)                   { toast.error("Selecione um funcionário"); return; }
     if (selectedServices.length === 0) { toast.error("Adicione pelo menos um serviço"); return; }
@@ -317,9 +317,9 @@ export default function AppointmentModal({
     setLoading(true);
     try {
       if (isEditing && appointment) {
-        appointmentsStore.update(appointment.id, buildPayload(gid));
+        await appointmentsStore.update(appointment.id, buildPayload(gid));
       } else {
-        appointmentsStore.create(buildPayload(gid));
+        await appointmentsStore.create(buildPayload(gid));
       }
       onSuccess();
       onAddGroupService?.(clientName.trim(), gid);
