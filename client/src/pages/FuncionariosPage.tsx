@@ -65,7 +65,7 @@ export default function FuncionariosPage() {
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.name.trim()) { toast.error("Nome é obrigatório"); return; }
     setLoading(true);
     try {
@@ -76,10 +76,10 @@ export default function FuncionariosPage() {
         workingHours: form.workingHours, active: form.active,
       };
       if (editingId) {
-        employeesStore.update(editingId, payload);
+        await employeesStore.update(editingId, payload);
         toast.success("Funcionário atualizado!");
       } else {
-        employeesStore.create(payload);
+        await employeesStore.create(payload);
         toast.success("Funcionário cadastrado!");
       }
       setModalOpen(false);
@@ -87,11 +87,13 @@ export default function FuncionariosPage() {
     } catch { toast.error("Erro ao salvar"); } finally { setLoading(false); }
   };
 
-  const handleDeactivate = (emp: Employee) => {
+  const handleDeactivate = async (emp: Employee) => {
     if (!confirm(`Desativar "${emp.name}"?`)) return;
-    employeesStore.update(emp.id, { active: false });
-    toast.success("Funcionário desativado");
-    setRefreshKey(k => k + 1);
+    try {
+      await employeesStore.update(emp.id, { active: false });
+      toast.success("Funcionário desativado");
+      setRefreshKey(k => k + 1);
+    } catch { toast.error("Erro ao desativar funcionário"); }
   };
 
   return (
