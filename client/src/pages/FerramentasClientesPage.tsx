@@ -3,6 +3,7 @@
  * Design: Glass Dashboard — tema escuro, accent rosa, backdrop-blur.
  */
 import { useState, useMemo, useRef, useCallback } from "react";
+import { useStoreEvent } from "@/hooks/useStoreEvent";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -130,7 +131,8 @@ function parseVCF(text: string): Omit<Client, "id" | "createdAt">[] {
     const lines: string[] = [];
 
     // Une linhas dobradas (RFC 2425: linha que começa com espaço/tab é continuação)
-    card.split(/?
+    card.split(/
+?
 /).forEach(line => {
       if (/^[ 	]/.test(line) && lines.length > 0) {
         lines[lines.length - 1] += line.trimStart();
