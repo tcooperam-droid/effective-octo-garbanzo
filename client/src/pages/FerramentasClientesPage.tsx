@@ -130,7 +130,7 @@ function parseVCF(text: string): Omit<Client, "id" | "createdAt">[] {
   cards.forEach(card => {
     const lines: string[] = [];
 
- card.split(/\r?\n|\r/)
+  card.split(/\r?\n|\r/) 
 /).forEach(line => {
       if (/^[ 	]/.test(line) && lines.length > 0) {
         lines[lines.length - 1] += line.trimStart();
