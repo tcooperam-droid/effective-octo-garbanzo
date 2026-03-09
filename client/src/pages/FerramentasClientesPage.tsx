@@ -3,7 +3,6 @@
  * Design: Glass Dashboard — tema escuro, accent rosa, backdrop-blur.
  */
 import { useState, useMemo, useRef, useCallback } from "react";
-import { useStoreEvent } from "@/hooks/useStoreEvent";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -130,8 +129,8 @@ function parseVCF(text: string): Omit<Client, "id" | "createdAt">[] {
   cards.forEach(card => {
     const lines: string[] = [];
 
-  card.split(/\r?\n|\r/)
-/).forEach(line => {
+    // Une linhas dobradas (RFC 2425: linha que começa com espaço/tab é continuação)
+    card.split(/\r?\n/).forEach(line => {
       if (/^[ 	]/.test(line) && lines.length > 0) {
         lines[lines.length - 1] += line.trimStart();
       } else {
@@ -307,14 +306,14 @@ export default function FerramentasClientesPage() {
     if (vcfInputRef.current) vcfInputRef.current.value = "";
   }, []);
 
-  const handleImportConfirm = () => {
+  const handleImportConfirm = async () => {
     setImporting(true);
     try {
       let created = 0;
-      importPreview.forEach(c => {
-        clientsStore.create(c);
+      for (const c of importPreview) {
+        await clientsStore.create(c);
         created++;
-      });
+      }
       toast.success(`${created} cliente(s) importado(s) com sucesso!`);
       setImportModalOpen(false);
       setImportPreview([]);
@@ -328,36 +327,41 @@ export default function FerramentasClientesPage() {
 
   // ─── Mesclagem individual ───────────────────────────────
 
-  const handleMergeGroup = (key: string) => {
+  const handleMergeGroup = async (key: string) => {
     const group = duplicateGroups.get(key);
     if (!group) return;
     const { keep, removeIds } = mergeClientGroup(group);
 
-    // Atualiza o cliente mantido
-    clientsStore.update(keep.id, {
-      email: keep.email,
-      phone: keep.phone,
-      birthDate: keep.birthDate,
-      notes: keep.notes,
-    });
-
-    // Reatribui agendamentos dos removidos para o mantido
-    const allAppts = appointmentsStore.list({});
-    removeIds.forEach(removeId => {
-      allAppts.filter(a => a.clientId === removeId).forEach(a => {
-        appointmentsStore.update(a.id, { clientId: keep.id, clientName: keep.name });
+    try {
+      // Atualiza o cliente mantido
+      await clientsStore.update(keep.id, {
+        email: keep.email,
+        phone: keep.phone,
+        birthDate: keep.birthDate,
+        notes: keep.notes,
       });
-      clientsStore.delete(removeId);
-    });
 
-    toast.success(`"${keep.name}" mesclado — ${removeIds.length} duplicata(s) removida(s)`);
-    setMergeDetailGroup(null);
-    refresh();
+      // Reatribui agendamentos dos removidos para o mantido
+      const allAppts = appointmentsStore.list({});
+      for (const removeId of removeIds) {
+        const appts = allAppts.filter(a => a.clientId === removeId);
+        for (const a of appts) {
+          await appointmentsStore.update(a.id, { clientId: keep.id, clientName: keep.name });
+        }
+        await clientsStore.delete(removeId);
+      }
+
+      toast.success(`"${keep.name}" mesclado — ${removeIds.length} duplicata(s) removida(s)`);
+      setMergeDetailGroup(null);
+      refresh();
+    } catch {
+      toast.error("Erro ao mesclar clientes");
+    }
   };
 
   // ─── Mesclar todos ─────────────────────────────────────
 
-  const handleMergeAll = () => {
+  const handleMergeAll = async () => {
     setMerging(true);
     try {
       let totalRemoved = 0;
@@ -365,23 +369,24 @@ export default function FerramentasClientesPage() {
         ? duplicateGroupsArray.filter(([key]) => selectedGroups.has(key))
         : duplicateGroupsArray;
 
-      groupsToMerge.forEach(([, group]) => {
+      for (const [, group] of groupsToMerge) {
         const { keep, removeIds } = mergeClientGroup(group);
-        clientsStore.update(keep.id, {
+        await clientsStore.update(keep.id, {
           email: keep.email,
           phone: keep.phone,
           birthDate: keep.birthDate,
           notes: keep.notes,
         });
         const allAppts = appointmentsStore.list({});
-        removeIds.forEach(removeId => {
-          allAppts.filter(a => a.clientId === removeId).forEach(a => {
-            appointmentsStore.update(a.id, { clientId: keep.id, clientName: keep.name });
-          });
-          clientsStore.delete(removeId);
-        });
+        for (const removeId of removeIds) {
+          const appts = allAppts.filter(a => a.clientId === removeId);
+          for (const a of appts) {
+            await appointmentsStore.update(a.id, { clientId: keep.id, clientName: keep.name });
+          }
+          await clientsStore.delete(removeId);
+        }
         totalRemoved += removeIds.length;
-      });
+      }
 
       toast.success(`Mesclagem concluída! ${totalRemoved} duplicata(s) removida(s) de ${groupsToMerge.length} grupo(s).`);
       setMergeAllOpen(false);
@@ -704,15 +709,14 @@ export default function FerramentasClientesPage() {
         type="file"
         accept=".csv,.tsv,.json,.txt,.xlsx,.xls"
         style={{ display: "none" }}
+        onChange={handleFileSelect}
       />
       <input
-        type="file"
         ref={vcfInputRef}
+        type="file"
         accept=".vcf,.vcard"
         style={{ display: "none" }}
         onChange={handleVCFSelect}
-        className="hidden"
-        onChange={handleFileSelect}
       />
 
       {/* ─── Modal: Preview de importação ─────────────────── */}
