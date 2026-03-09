@@ -81,7 +81,7 @@ export default function ClientesPage() {
     setModalOpen(true);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.name.trim()) { toast.error("Nome é obrigatório"); return; }
     setLoading(true);
     try {
@@ -95,10 +95,10 @@ export default function ClientesPage() {
         notes: form.notes || null,
       };
       if (editingId) {
-        clientsStore.update(editingId, payload);
+        await clientsStore.update(editingId, payload);
         toast.success("Cliente atualizado!");
       } else {
-        clientsStore.create(payload);
+        await clientsStore.create(payload);
         toast.success("Cliente cadastrado!");
       }
       setModalOpen(false);
@@ -110,20 +110,27 @@ export default function ClientesPage() {
     }
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (!confirm("Excluir este cliente?")) return;
-    clientsStore.delete(id);
-    toast.success("Cliente excluído");
-    setRefreshKey(k => k + 1);
+    try {
+      await clientsStore.delete(id);
+      toast.success("Cliente excluído");
+      setRefreshKey(k => k + 1);
+    } catch { toast.error("Erro ao excluir cliente"); }
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     setClearingAll(true);
-    clientsStore.clearAll();
-    toast.success("Todos os clientes foram removidos");
-    setClearAllOpen(false);
-    setClearingAll(false);
-    setRefreshKey(k => k + 1);
+    try {
+      await clientsStore.clearAll();
+      toast.success("Todos os clientes foram removidos");
+      setClearAllOpen(false);
+      setRefreshKey(k => k + 1);
+    } catch {
+      toast.error("Erro ao remover clientes");
+    } finally {
+      setClearingAll(false);
+    }
   };
 
   const selectedClientData = selectedClient ? clients.find(c => c.id === selectedClient) : null;
