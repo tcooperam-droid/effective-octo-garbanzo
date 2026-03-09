@@ -46,7 +46,7 @@ export default function ServicosPage() {
     setModalOpen(true);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.name.trim()) { toast.error("Nome é obrigatório"); return; }
     if (!form.price || isNaN(parseFloat(form.price))) { toast.error("Preço inválido"); return; }
     setLoading(true);
@@ -57,10 +57,10 @@ export default function ServicosPage() {
         color: form.color, active: form.active,
       };
       if (editingId) {
-        servicesStore.update(editingId, payload);
+        await servicesStore.update(editingId, payload);
         toast.success("Serviço atualizado!");
       } else {
-        servicesStore.create(payload);
+        await servicesStore.create(payload);
         toast.success("Serviço cadastrado!");
       }
       setModalOpen(false);
@@ -68,11 +68,13 @@ export default function ServicosPage() {
     } catch { toast.error("Erro ao salvar"); } finally { setLoading(false); }
   };
 
-  const handleDeactivate = (svc: Service) => {
+  const handleDeactivate = async (svc: Service) => {
     if (!confirm(`Desativar "${svc.name}"?`)) return;
-    servicesStore.update(svc.id, { active: false });
-    toast.success("Serviço desativado");
-    setRefreshKey(k => k + 1);
+    try {
+      await servicesStore.update(svc.id, { active: false });
+      toast.success("Serviço desativado");
+      setRefreshKey(k => k + 1);
+    } catch { toast.error("Erro ao desativar serviço"); }
   };
 
   return (
