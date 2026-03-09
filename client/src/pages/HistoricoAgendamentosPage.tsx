@@ -84,7 +84,7 @@ function RescheduleModal({ open, onClose, appointment, employees }: RescheduleMo
   if (!appointment) return null;
 
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!date) { toast.error("Selecione uma data"); return; }
     if (!time) { toast.error("Selecione um horário"); return; }
 
@@ -95,7 +95,7 @@ function RescheduleModal({ open, onClose, appointment, employees }: RescheduleMo
       const startDt = new Date(base.getFullYear(), base.getMonth(), base.getDate(), h, m);
       const endDt   = addMinutes(startDt, totalDuration);
 
-      appointmentsStore.create({
+      await appointmentsStore.create({
         clientName:    appointment.clientName,
         clientId:      appointment.clientId,
         employeeId:    appointment.employeeId,
